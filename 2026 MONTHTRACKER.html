@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE 2026 Ultra Planner</title>
+    <style>
+        :root {
+            --bg: #0b0f1a;
+            --card: #161e2d;
+            --accent: #22d3ee;
+            --text: #f1f5f9;
+            --border: #2d3748;
+            --today-border: #f59e0b;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            scroll-behavior: smooth;
+        }
+
+        .container { max-width: 1000px; margin: auto; }
+        
+        h1 { text-align: center; color: var(--accent); font-size: 2.2rem; margin-bottom: 30px; letter-spacing: 1px; }
+
+        /* Interface 1: 3x3 Month Grid */
+        #home-view { display: block; }
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr); /* 3 Columns */
+            grid-template-rows: repeat(3, 1fr);    /* 3 Rows */
+            gap: 20px;
+            height: 70vh; /* Takes up most of the screen */
+        }
+
+        .month-card {
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .month-card:hover {
+            border-color: var(--accent);
+            transform: scale(1.03);
+            background: #1e293b;
+            box-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
+        }
+
+        /* Interface 2: To-Dos */
+        #day-view { display: none; }
+        
+        .header-nav {
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            padding: 10px 0;
+            z-index: 100;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .back-btn {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .day-container {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            transition: 0.3s;
+        }
+
+        /* Highlight for the current active date */
+        .today-highlight {
+            border: 2px solid var(--today-border);
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+        }
+
+        .day-header { 
+            font-size: 1.1rem; 
+            font-weight: bold; 
+            margin-bottom: 12px; 
+            color: var(--accent);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .input-group { 
+            display: flex; 
+            gap: 8px; 
+            width: 100%; 
+            max-width: 500px; /* Thinner but longer text area */
+        }
+
+        input[type="text"] {
+            flex: 2;
+            background: #0f172a;
+            border: 1px solid var(--border);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            outline: none;
+        }
+
+        input[type="text"]:focus { border-color: var(--accent); }
+
+        .add-btn {
+            flex: 0.5;
+            background: var(--accent);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .todo-list { margin-top: 15px; }
+
+        .todo-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.03);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        .todo-item.completed span { text-decoration: line-through; color: #64748b; }
+
+        .delete-btn { color: #ef4444; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
+
+        @media (max-width: 768px) {
+            .month-grid { grid-template-columns: repeat(2, 1fr); height: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="home-view">
+        <h1>2026 JEE MISSION</h1>
+        <div class="month-grid" id="month-grid"></div>
+    </div>
+
+    <div id="day-view">
+        <div class="header-nav">
+            <button class="back-btn" onclick="showMonths()">← ALL MONTHS</button>
+            <h2 id="month-label" style="margin:0;">Month</h2>
+            <div style="width: 100px;"></div> </div>
+        <div id="days-list"></div>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'JEE_FINAL_PLANNER_2026';
+    const months = [
+        { name: "April", days: 30, idx: 3 }, { name: "May", days: 31, idx: 4 },
+        { name: "June", days: 30, idx: 5 }, { name: "July", days: 31, idx: 6 },
+        { name: "August", days: 31, idx: 7 }, { name: "September", days: 30, idx: 8 },
+        { name: "October", days: 31, idx: 9 }, { name: "November", days: 30, idx: 10 },
+        { name: "December", days: 31, idx: 11 }
+    ];
+
+    let todos = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+
+    // Get current real-time data
+    const now = new Date();
+    const currentMonthReal = now.getMonth(); 
+    const currentDateReal = now.getDate();
+
+    function init() {
+        const grid = document.getElementById('month-grid');
+        months.forEach(m => {
+            const div = document.createElement('div');
+            div.className = 'month-card';
+            div.innerText = m.name;
+            div.onclick = () => showDays(m);
+            grid.appendChild(div);
+        });
+    }
+
+    function showDays(month) {
+        document.getElementById('home-view').style.display = 'none';
+        document.getElementById('day-view').style.display = 'block';
+        document.getElementById('month-label').innerText = month.name + " 2026";
+        
+        const list = document.getElementById('days-list');
+        list.innerHTML = '';
+
+        // Start from April 9 as per your requirement
+        let startDay = (month.name === "April") ? 9 : 1;
+
+        for (let i = 1; i <= month.days; i++) {
+            if (month.name === "April" && i < 9) continue;
+
+            const dateKey = `2026-${month.idx}-${i}`;
+            const isToday = (month.idx === currentMonthReal && i === currentDateReal);
+            
+            const dayBox = document.createElement('div');
+            dayBox.className = `day-container ${isToday ? 'today-highlight' : ''}`;
+            dayBox.id = isToday ? 'scroll-to-today' : `day-${i}`;
+            
+            dayBox.innerHTML = `
+                <div class="day-header">
+                    <span>${i} ${month.name} ${isToday ? '• TODAY' : ''}</span>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="input-${dateKey}" placeholder="Add subject/topic...">
+                    <button class="add-btn" onclick="addTodo('${dateKey}')">ADD</button>
+                </div>
+                <div class="todo-list" id="list-${dateKey}"></div>
+            `;
+            list.appendChild(dayBox);
+            renderTodos(dateKey);
+        }
+
+        // AUTO SCROLL LOGIC
+        if (month.idx === currentMonthReal) {
+            setTimeout(() => {
+                const todayEl = document.getElementById('scroll-to-today');
+                if (todayEl) {
+                    todayEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        } else {
+            window.scrollTo(0,0);
+        }
+    }
+
+    function showMonths() {
+        document.getElementById('home-view').style.display = 'block';
+        document.getElementById('day-view').style.display = 'none';
+    }
+
+    function addTodo(dateKey) {
+        const input = document.getElementById(`input-${dateKey}`);
+        const text = input.value.trim();
+        if (!text) return;
+
+        if (!todos[dateKey]) todos[dateKey] = [];
+        todos[dateKey].push({ id: Date.now(), text: text, completed: false });
+        
+        saveAndRender(dateKey);
+        input.value = '';
+    }
+
+    function toggleTodo(dateKey, id) {
+        todos[dateKey] = todos[dateKey].map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+        saveAndRender(dateKey);
+    }
+
+    function deleteTodo(dateKey, id) {
+        todos[dateKey] = todos[dateKey].filter(t => t.id !== id);
+        saveAndRender(dateKey);
+    }
+
+    function saveAndRender(dateKey) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+        renderTodos(dateKey);
+    }
+
+    function renderTodos(dateKey) {
+        const container = document.getElementById(`list-${dateKey}`);
+        if (!container) return;
+        container.innerHTML = '';
+        (todos[dateKey] || []).forEach(t => {
+            const div = document.createElement('div');
+            div.className = `todo-item ${t.completed ? 'completed' : ''}`;
+            div.innerHTML = `
+                <div style="display:flex; align-items:center; gap:10px">
+                    <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggleTodo('${dateKey}', ${t.id})">
+                    <span>${t.text}</span>
+                </div>
+                <span class="delete-btn" onclick="deleteTodo('${dateKey}', ${t.id})">REMOVE</span>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    init();
+</script>
+
+</body>
+</html>
