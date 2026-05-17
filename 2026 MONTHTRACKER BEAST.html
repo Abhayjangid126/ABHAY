@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JEE 2026 Beast Planner</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050810;
+            --card: rgba(16, 23, 37, 0.65);
+            --accent: #3b82f6; /* Electric Blue */
+            --accent-glow: rgba(59, 130, 246, 0.4);
+            --text: #f8fafc;
+            --text-dim: #64748b;
+            --border: rgba(51, 65, 85, 0.5);
+            --danger: #ef4444;
+            --success: #10b981;
+            --warning: #f59e0b;
+            
+            /* Subject Colors */
+            --phy: #8b5cf6; /* Purple */
+            --chem: #ec4899; /* Pink */
+            --math: #0ea5e9; /* Light Blue */
+            --mock: #ef4444; /* Red */
+            --lec: #f59e0b; /* Orange */
+        }
+
+        * { box-sizing: border-box; font-family: 'Inter', system-ui, sans-serif; }
+
+        body {
+            background-color: var(--bg);
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.08) 0%, transparent 50%);
+            color: var(--text);
+            margin: 0; padding: 20px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container { max-width: 1100px; margin: auto; position: relative; padding-bottom: 80px; }
+        
+        /* Glassmorphism Utilities */
+        .glass {
+            background: var(--card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+        }
+
+        /* --- HEADER & STATS --- */
+        .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        h1 { color: #fff; font-size: 2.2rem; margin: 0; text-shadow: 0 0 20px var(--accent-glow); }
+        h1 span { color: var(--accent); }
+        
+        .stats-bar {
+            display: flex; gap: 20px;
+        }
+        .stat-badge {
+            background: rgba(0,0,0,0.4); padding: 8px 16px; border-radius: 12px;
+            border: 1px solid var(--border); font-weight: bold; display: flex; align-items: center; gap: 8px;
+        }
+        .stat-badge i { color: var(--warning); }
+
+        /* --- HOME VIEW (MONTH GRID) --- */
+        #home-view { animation: fadeIn 0.4s ease; }
+        .month-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        
+        .month-card {
+            padding: 25px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center;
+        }
+        .month-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(180deg, transparent, rgba(59, 130, 246, 0.05));
+            opacity: 0; transition: 0.3s;
+        }
+        .month-card:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 10px 30px var(--accent-glow); }
+        .month-card:hover::before { opacity: 1; }
+        
+        .month-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 15px; z-index: 1; }
+        .progress-container { width: 100%; background: rgba(0,0,0,0.5); border-radius: 10px; height: 10px; overflow: hidden; z-index: 1; }
+        .progress-bar { height: 100%; background: var(--accent); width: 0%; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px var(--accent); }
+        .progress-text { font-size: 0.85rem; color: var(--text-dim); margin-top: 8px; z-index: 1; }
+
+        /* --- DAY VIEW --- */
+        #day-view { display: none; animation: fadeIn 0.4s ease; }
+        .header-nav {
+            position: sticky; top: 0; background: rgba(5, 8, 16, 0.85); backdrop-filter: blur(12px);
+            padding: 15px 0; z-index: 100; border-bottom: 1px solid var(--border); margin-bottom: 25px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .btn-glass {
+            background: rgba(255,255,255,0.05); color: white; border: 1px solid var(--border);
+            padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .btn-glass:hover { background: rgba(255,255,255,0.1); border-color: var(--accent); }
+
+        .day-container { padding: 25px; margin-bottom: 25px; transition: 0.3s; display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+        @media (max-width: 768px) { .day-container { grid-template-columns: 1fr; } }
+        
+        .today-highlight { border: 2px solid var(--accent); box-shadow: 0 0 30px var(--accent-glow); }
+        
+        .day-header { font-size: 1.3rem; font-weight: 800; margin-bottom: 20px; display: flex; justify-content: space-between; color: var(--accent); grid-column: 1 / -1;}
+        
+        /* Task Input Area */
+        .task-input-area { display: flex; flex-direction: column; gap: 15px; }
+        .input-row { display: flex; gap: 10px; }
+        .input-row input[type="text"] {
+            flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: white;
+            padding: 14px; border-radius: 10px; outline: none; font-size: 1rem; transition: 0.3s;
+        }
+        .input-row input[type="text"]:focus { border-color: var(--accent); background: rgba(0,0,0,0.5); }
+        
+        .tag-select {
+            background: rgba(0,0,0,0.3); color: white; border: 1px solid var(--border);
+            padding: 0 15px; border-radius: 10px; outline: none; cursor: pointer;
+        }
+        .add-btn { background: var(--accent); color: #fff; border: none; border-radius: 10px; padding: 0 25px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 1.2rem;}
+        .add-btn:hover { filter: brightness(1.2); box-shadow: 0 0 15px var(--accent-glow); }
+
+        /* Todo List */
+        .todo-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+        .todo-item {
+            display: flex; align-items: center; justify-content: space-between;
+            background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+            padding: 14px 18px; border-radius: 12px; transition: 0.2s;
+        }
+        .todo-item:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
+        .todo-content { display: flex; align-items: center; gap: 15px; flex: 1; cursor: pointer; }
+        
+        /* Badges */
+        .badge { padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge.phy { background: rgba(139, 92, 246, 0.2); color: var(--phy); border: 1px solid var(--phy); }
+        .badge.chem { background: rgba(236, 72, 153, 0.2); color: var(--chem); border: 1px solid var(--chem); }
+        .badge.math { background: rgba(14, 165, 233, 0.2); color: var(--math); border: 1px solid var(--math); }
+        .badge.lec { background: rgba(245, 158, 11, 0.2); color: var(--lec); border: 1px solid var(--lec); }
+        .badge.mock { background: rgba(239, 68, 68, 0.2); color: var(--mock); border: 1px solid var(--mock); }
+        .badge.general { background: rgba(100, 116, 139, 0.2); color: var(--text-dim); border: 1px solid var(--text-dim); }
+
+        /* Checkbox */
+        .checkbox-custom {
+            appearance: none; width: 22px; height: 22px; border: 2px solid var(--text-dim);
+            border-radius: 6px; cursor: pointer; position: relative; transition: 0.2s; flex-shrink: 0;
+        }
+        .checkbox-custom:checked { background: var(--success); border-color: var(--success); box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+        .checkbox-custom:checked::after { content: '✔'; position: absolute; color: #fff; font-size: 14px; top: -1px; left: 4px; font-weight: bold; }
+        
+        .todo-text { font-size: 1.05rem; transition: 0.3s; word-break: break-word; }
+        .todo-item.completed .todo-text { text-decoration: line-through; opacity: 0.4; }
+
+        .actions { display: flex; gap: 10px; }
+        .icon-btn { background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 1rem; transition: 0.2s; }
+        .icon-btn:hover { color: white; transform: scale(1.1); }
+        .icon-btn.star.active { color: var(--warning); text-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+        .icon-btn.delete:hover { color: var(--danger); }
+
+        /* Notes Vault */
+        .notes-vault { display: flex; flex-direction: column; gap: 10px; }
+        .notes-vault h3 { margin: 0; font-size: 1rem; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
+        .notes-area {
+            width: 100%; height: 100%; min-height: 150px; background: rgba(0,0,0,0.3); border: 1px solid var(--border);
+            color: var(--warning); padding: 15px; border-radius: 12px; outline: none; resize: vertical;
+            font-family: monospace; font-size: 0.95rem; transition: 0.3s;
+        }
+        .notes-area:focus { border-color: var(--warning); background: rgba(0,0,0,0.5); }
+
+        /* --- FLOATING POMODORO TIMER --- */
+        .pomodoro-widget {
+            position: fixed; bottom: 20px; right: 20px; z-index: 1000;
+            padding: 15px 20px; display: flex; align-items: center; gap: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); cursor: move;
+        }
+        .timer-display { font-size: 1.5rem; font-weight: bold; font-variant-numeric: tabular-nums; letter-spacing: 2px; }
+        .pomo-controls { display: flex; gap: 10px; }
+        .pomo-btn { background: rgba(255,255,255,0.1); border: none; color: white; width: 35px; height: 35px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .pomo-btn:hover { background: var(--accent); }
+        .pomo-mode { font-size: 0.75rem; color: var(--text-dim); position: absolute; top: 5px; right: 15px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="home-view">
+        <div class="header-top">
+            <h1>JEE <span>MISSION</span> CONTROL</h1>
+            <div class="stats-bar">
+                <div class="stat-badge"><i class="fas fa-fire"></i> <span id="streak-counter">0</span> Day Streak</div>
+                <button class="btn-glass" onclick="exportData()"><i class="fas fa-download"></i> Backup</button>
+            </div>
+        </div>
+        <div class="month-grid" id="month-grid"></div>
+    </div>
+
+    <div id="day-view">
+        <div class="header-nav">
+            <button class="btn-glass" onclick="showMonths()"><i class="fas fa-arrow-left"></i> Dashboard</button>
+            <h2 id="month-label" style="margin:0; color: white; text-transform: uppercase; letter-spacing: 2px;">Month</h2>
+            <div style="width: 130px;"></div>
+        </div>
+        <div id="days-list"></div>
+    </div>
+</div>
+
+<div class="glass pomodoro-widget" id="pomo-widget">
+    <div class="pomo-mode" id="pomo-mode">FOCUS</div>
+    <div class="timer-display" id="timer-display">25:00</div>
+    <div class="pomo-controls">
+        <button class="pomo-btn" onclick="toggleTimer()" id="pomo-play"><i class="fas fa-play"></i></button>
+        <button class="pomo-btn" onclick="resetTimer()"><i class="fas fa-redo"></i></button>
+        <button class="pomo-btn" onclick="switchMode()" title="Switch to Break"><i class="fas fa-coffee"></i></button>
+    </div>
+</div>
+
+<script>
+    const STORAGE_KEY = 'JEE_BEAST_PLANNER_DATA';
+    
+    // Core Data Structure
+    let appData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {
+        todos: {},
+        notes: {},
+        lastActiveDate: null,
+        streak: 0
+    };
+
+    const months = [
+        { name: "April", days: 30, idx: 3 }, { name: "May", days: 31, idx: 4 },
+        { name: "June", days: 30, idx: 5 }, { name: "July", days: 31, idx: 6 },
+        { name: "August", days: 31, idx: 7 }, { name: "September", days: 30, idx: 8 },
+        { name: "October", days: 31, idx: 9 }, { name: "November", days: 30, idx: 10 },
+        { name: "December", days: 31, idx: 11 }
+    ];
+
+    const trackingYear = 2026; 
+    const now = new Date();
+    const currentMonthReal = now.getMonth(); 
+    const currentDateReal = now.getDate();
+    const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+
+    // --- INITIALIZATION ---
+    function init() {
+        calculateStreak();
+        const grid = document.getElementById('month-grid');
+        grid.innerHTML = ''; 
+        months.forEach(m => {
+            const progress = getMonthProgress(m);
+            const div = document.createElement('div');
+            div.className = 'glass month-card';
+            div.innerHTML = `
+                <div class="month-title">${m.name}</div>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: ${progress}%"></div>
+                </div>
+                <div class="progress-text">${progress}% Syllabus Completed</div>
+            `;
+            div.onclick = () => showDays(m);
+            grid.appendChild(div);
+        });
+    }
+
+    function getMonthProgress(month) {
+        let total = 0; let completed = 0;
+        let startDay = (month.name === "April") ? 9 : 1;
+        for (let i = startDay; i <= month.days; i++) {
+            const dateKey = `${trackingYear}-${month.idx}-${i}`;
+            if(appData.todos[dateKey]) {
+                appData.todos[dateKey].forEach(t => {
+                    total++;
+                    if(t.completed) completed++;
+                });
+            }
+        }
+        return total === 0 ? 0 : Math.round((completed / total) * 100);
+    }
+
+    function calculateStreak() {
+        // Basic streak logic: If they completed a task today or yesterday, maintain streak.
+        // For a true app, you'd check continuous historical dates.
+        document.getElementById('streak-counter').innerText = appData.streak || 0;
+    }
+
+    function updateStreakOnAction(dateKey) {
+        // Simple gamification trigger
+        if(dateKey === todayKey && appData.lastActiveDate !== todayKey) {
+            let hasCompletedToday = appData.todos[dateKey] && appData.todos[dateKey].some(t => t.completed);
+            if(hasCompletedToday) {
+                appData.streak = (appData.streak || 0) + 1;
+                appData.lastActiveDate = todayKey;
+                document.getElementById('streak-counter').innerText = appData.streak;
+            }
+        }
+        saveData();
+    }
+
+    // --- NAVIGATION ---
+    function showMonths() {
+        document.getElementById('home-view').style.display = 'block';
+        document.getElementById('day-view').style.display = 'none';
+        init(); 
+    }
+
+    function showDays(month) {
+        document.getElementById('home-view').style.display = 'none';
+        document.getElementById('day-view').style.display = 'block';
+        document.getElementById('month-label').innerText = month.name;
+        
+        const list = document.getElementById('days-list');
+        list.innerHTML = '';
+
+        let startDay = (month.name === "April") ? 9 : 1;
+
+        for (let i = 1; i <= month.days; i++) {
+            if (month.name === "April" && i < 9) continue;
+
+            const dateKey = `${trackingYear}-${month.idx}-${i}`;
+            const isToday = (month.idx === currentMonthReal && i === currentDateReal);
+            const noteContent = appData.notes[dateKey] || '';
+            
+            const dayBox = document.createElement('div');
+            dayBox.className = `glass day-container ${isToday ? 'today-highlight' : ''}`;
+            dayBox.id = isToday ? 'scroll-to-today' : `day-${i}`;
+            
+            dayBox.innerHTML = `
+                <div class="day-header">
+                    <span>${i} ${month.name} ${isToday ? '<span style="color:var(--text);font-size:0.9rem;margin-left:10px;background:var(--accent);padding:2px 8px;border-radius:4px;">TODAY</span>' : ''}</span>
+                    <span id="stats-${dateKey}" style="color:var(--text-dim);font-size:1rem;">0/0 Done</span>
+                </div>
+                
+                <div class="task-input-area">
+                    <div class="input-row">
+                        <select id="tag-${dateKey}" class="tag-select">
+                            <option value="general">Task</option>
+                            <option value="phy">Physics</option>
+                            <option value="chem">Chemistry</option>
+                            <option value="math">Maths</option>
+                            <option value="lec">Lecture/One-Shot</option>
+                            <option value="mock">Mock Test</option>
+                        </select>
+                        <input type="text" id="input-${dateKey}" placeholder="What needs to be crushed?" onkeypress="handleKeyPress(event, '${dateKey}')">
+                        <button class="add-btn" onclick="addTodo('${dateKey}')">+</button>
+                    </div>
+                    <div class="todo-list" id="list-${dateKey}"></div>
+                </div>
+
+                <div class="notes-vault">
+                    <h3><i class="fas fa-book"></i> Mistake & Formula Vault</h3>
+                    <textarea class="notes-area" id="notes-${dateKey}" placeholder="Drop important formulas, tough concepts, or mistakes from mock tests here..." oninput="saveNote('${dateKey}')">${noteContent}</textarea>
+                </div>
+            `;
+            list.appendChild(dayBox);
+            renderTodos(dateKey);
+        }
+
+        if (month.idx === currentMonthReal) {
+            setTimeout(() => {
+                const todayEl = document.getElementById('scroll-to-today');
+                if (todayEl) todayEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 100);
+        } else {
+            window.scrollTo(0,0);
+        }
+    }
+
+    // --- CRUD OPERATIONS ---
+    function handleKeyPress(e, dateKey) { if (e.key === 'Enter') addTodo(dateKey); }
+
+    function addTodo(dateKey) {
+        const input = document.getElementById(`input-${dateKey}`);
+        const tagInput = document.getElementById(`tag-${dateKey}`);
+        const text = input.value.trim();
+        
+        if (!text) return;
+        if (!appData.todos[dateKey]) appData.todos[dateKey] = [];
+        
+        appData.todos[dateKey].push({ 
+            id: Date.now(), 
+            text: text, 
+            completed: false,
+            tag: tagInput.value,
+            important: false
+        });
+        
+        saveAndRender(dateKey);
+        input.value = '';
+    }
+
+    function toggleTodo(dateKey, id) {
+        appData.todos[dateKey] = appData.todos[dateKey].map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+        updateStreakOnAction(dateKey);
+        saveAndRender(dateKey);
+    }
+
+    function toggleImportant(dateKey, id) {
+        appData.todos[dateKey] = appData.todos[dateKey].map(t => t.id === id ? { ...t, important: !t.important } : t);
+        saveAndRender(dateKey);
+    }
+
+    function deleteTodo(dateKey, id) {
+        appData.todos[dateKey] = appData.todos[dateKey].filter(t => t.id !== id);
+        saveAndRender(dateKey);
+    }
+
+    function saveNote(dateKey) {
+        const val = document.getElementById(`notes-${dateKey}`).value;
+        appData.notes[dateKey] = val;
+        saveData();
+    }
+
+    function saveAndRender(dateKey) { saveData(); renderTodos(dateKey); }
+    function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(appData)); }
+
+    function renderTodos(dateKey) {
+        const container = document.getElementById(`list-${dateKey}`);
+        const stats = document.getElementById(`stats-${dateKey}`);
+        if (!container) return;
+        
+        container.innerHTML = '';
+        const dayTodos = appData.todos[dateKey] || [];
+        let completedCount = 0;
+
+        // Sort: Important first, then incomplete, then completed
+        const sortedTodos = [...dayTodos].sort((a, b) => {
+            if(a.completed !== b.completed) return a.completed ? 1 : -1;
+            if(a.important !== b.important) return a.important ? -1 : 1;
+            return 0;
+        });
+
+        sortedTodos.forEach(t => {
+            if(t.completed) completedCount++;
+            const div = document.createElement('div');
+            div.className = `todo-item ${t.completed ? 'completed' : ''}`;
+            
+            div.innerHTML = `
+                <label class="todo-content">
+                    <input type="checkbox" class="checkbox-custom" ${t.completed ? 'checked' : ''} onchange="toggleTodo('${dateKey}', ${t.id})">
+                    <span class="badge ${t.tag}">${getBadgeName(t.tag)}</span>
+                    <span class="todo-text">${t.text}</span>
+                </label>
+                <div class="actions">
+                    <button class="icon-btn star ${t.important ? 'active' : ''}" onclick="toggleImportant('${dateKey}', ${t.id})"><i class="fas fa-star"></i></button>
+                    <button class="icon-btn delete" onclick="deleteTodo('${dateKey}', ${t.id})"><i class="fas fa-trash"></i></button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
+        if(stats) {
+            stats.innerText = `${completedCount}/${dayTodos.length} Done`;
+            stats.style.color = (dayTodos.length > 0 && completedCount === dayTodos.length) ? 'var(--success)' : 'var(--text-dim)';
+        }
+    }
+
+    function getBadgeName(tag) {
+        const map = { phy: 'Physics', chem: 'Chemistry', math: 'Maths', mock: 'Mock', lec: 'Lecture', general: 'Task' };
+        return map[tag] || 'Task';
+    }
+
+    function exportData() {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+        const anchor = document.createElement('a');
+        anchor.setAttribute("href", dataStr);
+        anchor.setAttribute("download", "JEE_Beast_Backup.json");
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+    }
+
+    // --- POMODORO TIMER LOGIC ---
+    let pomoTime = 25 * 60; // 25 mins
+    let pomoInterval = null;
+    let isPomoRunning = false;
+    let isBreak = false;
+
+    function formatTime(seconds) {
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = (seconds % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    function updateTimerDisplay() {
+        document.getElementById('timer-display').innerText = formatTime(pomoTime);
+    }
+
+    function toggleTimer() {
+        const btn = document.getElementById('pomo-play');
+        if (isPomoRunning) {
+            clearInterval(pomoInterval);
+            isPomoRunning = false;
+            btn.innerHTML = '<i class="fas fa-play"></i>';
+        } else {
+            isPomoRunning = true;
+            btn.innerHTML = '<i class="fas fa-pause"></i>';
+            pomoInterval = setInterval(() => {
+                if (pomoTime > 0) {
+                    pomoTime--;
+                    updateTimerDisplay();
+                } else {
+                    clearInterval(pomoInterval);
+                    isPomoRunning = false;
+                    alert(isBreak ? "Break is over! Get back to the grind." : "Focus session complete! Take a break.");
+                    switchMode();
+                }
+            }, 1000);
+        }
+    }
+
+    function resetTimer() {
+        clearInterval(pomoInterval);
+        isPomoRunning = false;
+        document.getElementById('pomo-play').innerHTML = '<i class="fas fa-play"></i>';
+        pomoTime = isBreak ? 5 * 60 : 25 * 60;
+        updateTimerDisplay();
+    }
+
+    function switchMode() {
+        isBreak = !isBreak;
+        document.getElementById('pomo-mode').innerText = isBreak ? "BREAK" : "FOCUS";
+        document.getElementById('pomo-widget').style.borderColor = isBreak ? "var(--success)" : "var(--border)";
+        resetTimer();
+    }
+
+    // Make Pomodoro widget draggable (Simple implementation)
+    const widget = document.getElementById('pomo-widget');
+    let isDragging = false, startX, startY, initialX, initialY;
+    widget.addEventListener('mousedown', e => {
+        if(e.target.tagName === 'BUTTON' || e.target.tagName === 'I') return;
+        isDragging = true;
+        startX = e.clientX; startY = e.clientY;
+        const rect = widget.getBoundingClientRect();
+        initialX = rect.left; initialY = rect.top;
+        widget.style.right = 'auto'; widget.style.bottom = 'auto';
+    });
+    document.addEventListener('mousemove', e => {
+        if(!isDragging) return;
+        widget.style.left = `${initialX + e.clientX - startX}px`;
+        widget.style.top = `${initialY + e.clientY - startY}px`;
+    });
+    document.addEventListener('mouseup', () => isDragging = false);
+
+    init();
+</script>
+
+</body>
+</html>
